@@ -1,6 +1,7 @@
 #ifndef __EPOXY_CONFIG_H__
 #define __EPOXY_CONFIG_H__
 
+#cmakedefine HAVE_INTTYPES_H
 #cmakedefine HAVE_STDBOOL_H
 #cmakedefine HAVE_STDINT_H
 
@@ -15,6 +16,12 @@
 #include <stdbool.h>
 #else
 #include <c99/stdbool.h>
+#endif
+
+#if defined(HAVE_INTTYPES_H)
+#include <inttypes.h>
+#elif defined(_MSC_VER)
+#include <c99/inttypes.h>
 #endif
 
 #if defined(HAVE_STDINT_H)

@@ -44,6 +44,7 @@ endif()
 
 
 check_include_file(KHR/khrplatform.h  HAVE_KHRPLATFORM_H)
+check_include_file(inttypes.h HAVE_INTTYPES_H)
 check_include_file(stdbool.h  HAVE_STDBOOL_H)
 check_include_file(stdint.h   HAVE_STDINT_H)
 if(NOT MSVC)
