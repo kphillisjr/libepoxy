@@ -1,0 +1,25 @@
+#ifndef __EPOXY_CONFIG_H__
+#define __EPOXY_CONFIG_H__
+
+#cmakedefine HAVE_STDBOOL_H
+#cmakedefine HAVE_STDINT_H
+
+/* Configuration of Platform Defines*/
+#define PLATFORM_HAS_EGL @PLATFORM_HAS_EGL@
+#define PLATFORM_HAS_GLX @PLATFORM_HAS_GLX@
+#define PLATFORM_HAS_WGL @PLATFORM_HAS_WGL@
+#define PLATFORM_HAS_OPENGL @PLATFORM_HAS_OPENGL@
+
+
+#if defined(HAVE_STDBOOL_H)
+#include <stdbool.h>
+#else
+#include <c99/stdbool.h>
+#endif
+
+#if defined(HAVE_STDINT_H)
+#include <stdint.h>
+#elif defined(_MSC_VER)
+#include <c99/stdint.h>
+#endif
+#endif
