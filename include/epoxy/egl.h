@@ -34,7 +34,7 @@
 extern "C" {
 #endif
 
-#include <stdbool.h>
+#include <epoxy/config.h>
 
 #if defined(__egl_h_) || defined(__eglext_h_)
 #error epoxy/egl.h must be included before (or in place of) GL/egl.h

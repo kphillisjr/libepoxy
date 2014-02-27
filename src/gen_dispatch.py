@@ -478,7 +478,7 @@ class Generator(object):
 
         self.outln('#pragma once')
 
-        self.outln('#include <inttypes.h>')
+        self.outln('#include <epoxy/config.h>')
         self.outln('#include <stddef.h>')
         self.outln('')
 

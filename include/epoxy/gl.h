@@ -34,7 +34,7 @@
 extern "C" {
 #endif
 
-#include <stdbool.h>
+#include <epoxy/config.h>
 
 #if defined(__gl_h_) || defined(__glext_h_)
 #error epoxy/gl.h must be included before (or in place of) GL/gl.h

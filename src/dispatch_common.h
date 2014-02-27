@@ -21,21 +21,10 @@
  * IN THE SOFTWARE.
  */
 
-#include <stdbool.h>
+#include <epoxy/config.h>
 
 #ifdef _WIN32
-#define PLATFORM_HAS_EGL 0
-#define PLATFORM_HAS_GLX 0
-#define PLATFORM_HAS_WGL 1
 #define EPOXYAPIENTRY __declspec(dllexport) __stdcall
-#elif defined(__APPLE__)
-#define PLATFORM_HAS_EGL 0
-#define PLATFORM_HAS_GLX 1
-#define PLATFORM_HAS_WGL 0
-#else
-#define PLATFORM_HAS_EGL 1
-#define PLATFORM_HAS_GLX 1
-#define PLATFORM_HAS_WGL 0
 #endif
 
 #include "epoxy/gl.h"

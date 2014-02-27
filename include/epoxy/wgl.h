@@ -34,7 +34,7 @@
 extern "C" {
 #endif
 
-#include <stdbool.h>
+#include <epoxy/config.h>
 #include <windows.h>
 
 #undef wglUseFontBitmaps
