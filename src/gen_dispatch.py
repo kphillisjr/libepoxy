@@ -464,6 +464,9 @@ class Generator(object):
                                                                     func.args_decl))
 
     def write_header_header(self, file):
+        dir = os.path.dirname(file)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
         self.out_file = open(file, 'w')
 
         self.outln('/* GL dispatch header.')
@@ -756,6 +759,9 @@ class Generator(object):
         self.outln('')
 
     def write_source(self, file):
+        dir = os.path.dirname(file)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
         self.out_file = open(file, 'w')
 
         self.outln('/* GL dispatch code.')
