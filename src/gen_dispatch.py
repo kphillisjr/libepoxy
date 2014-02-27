@@ -27,6 +27,7 @@ import argparse
 import xml.etree.ElementTree as ET
 import re
 import os
+import platform
 
 class GLProvider(object):
     def __init__(self, condition, condition_name, loader, name):
@@ -687,10 +688,15 @@ class Generator(object):
         self.outln('static const char *enum_strings[] = {')
 
         sorted_providers = sorted(self.provider_enum.keys())
-
-        for human_name in sorted_providers:
-            enum = self.provider_enum[human_name]
-            self.outln('    [{0}] = "{1}",'.format(enum, human_name))
+        if platform.system() is not 'Windows':
+            for human_name in sorted_providers:
+                enum = self.provider_enum[human_name]
+                self.outln('    [{0}] = "{1}",'.format(enum, human_name))
+        else:
+            self.outln('    "", /* Blank enum used for {0}_provider_terminator */'.format(self.target))
+            for human_name in sorted_providers:
+                enum = self.provider_enum[human_name]
+                self.outln('    "{0}",'.format(human_name))
         self.outln('};')
         self.outln('')
 
