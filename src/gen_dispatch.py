@@ -275,6 +275,15 @@ class Generator(object):
         for name in weird_functions:
             del self.functions[name]
 
+    def drop_weird_wgl_functions(self):
+        # Drop a few undocumented and otherwize unusable WGL functions
+        weird_functions = [name for name, func in self.functions.items()
+                           if 'wglGetDefaultProcAddress' in name
+                           ]
+
+        for name in weird_functions:
+            del self.functions[name]
+
     def resolve_aliases(self):
         for func in self.functions.values():
             # Find the root of the alias tree, and add ourselves to it.
@@ -528,11 +537,17 @@ class Generator(object):
         self.outln('')
         self.write_function_ptr_typedefs()
 
-        for func in self.sorted_functions:
-            self.outln('extern EPOXYAPIENTRY {0} (*epoxy_{1})({2});'.format(func.ret_type,
-                                                                                     func.name,
-                                                                                     func.args_decl))
-            self.outln('')
+        if platform.system() is not 'Windows':
+            for func in self.sorted_functions:
+                self.outln('extern EPOXYAPIENTRY {0} (*epoxy_{1})({2});'.format(func.ret_type,
+                                                                                         func.name,
+                                                                                         func.args_decl))
+                self.outln('')
+        else:
+            for func in self.sorted_functions:
+                self.outln('extern {0} epoxy_{1};'.format(func.ptr_type,
+                                                         func.name))
+                self.outln('')        
 
         for func in self.sorted_functions:
             self.outln('#define {0} epoxy_{0}'.format(func.name))
@@ -578,16 +593,29 @@ class Generator(object):
                 self.outln('        {0} /* "{1}" */,'.format(self.entrypoint_string_offset[provider.name], provider.name))
             self.outln('    };')
 
-            self.outln('    return {0}_provider_resolver(entrypoint_strings + {1} /* "{2}" */,'.format(self.target,
+            if platform.system() is not 'Windows':
+                self.outln('    return {0}_provider_resolver(entrypoint_strings + {1} /* "{2}" */,'.format(self.target,
+                                                                                                           self.entrypoint_string_offset[func.name],
+                                                                                                           func.name))
+            else:
+                self.outln('    return ({0}) {1}_provider_resolver(entrypoint_strings + {2} /* "{3}" */,'.format(func.ptr_type,
+                                                                                                       self.target,
                                                                                                        self.entrypoint_string_offset[func.name],
                                                                                                        func.name))
             self.outln('                                providers, entrypoints);')
         else:
             assert(providers[0].name == func.name)
-            self.outln('    return {0}_single_resolver({1}, {2} /* {3} */);'.format(self.target,
-                                                                                    providers[0].enum,
-                                                                                    self.entrypoint_string_offset[func.name],
-                                                                                    func.name))
+            if platform.system() is not 'Windows':
+                self.outln('    return {0}_single_resolver({1}, {2} /* {3} */);'.format(self.target,
+                                                                                        providers[0].enum,
+                                                                                        self.entrypoint_string_offset[func.name],
+                                                                                        func.name))
+            else:
+                self.outln('    return ({0}) {1}_single_resolver({2}, {3} /* {4} */);'.format(func.ptr_type,
+                                                                                        self.target,
+                                                                                        providers[0].enum,
+                                                                                        self.entrypoint_string_offset[func.name],
+                                                                                        func.name))
         self.outln('}')
         self.outln('')
 
@@ -597,10 +625,16 @@ class Generator(object):
 
         dispatch_table_entry = 'dispatch_table->p{0}'.format(func.alias_name)
 
-        self.outln('static __stdcall {0}'.format(func.ret_type))
+        if platform.system() is not 'Windows':
+            self.outln('static __stdcall {0}'.format(func.ret_type))
+        else:
+            self.outln('static {0}'.format(func.ret_type))
         self.outln('epoxy_{0}_dispatch_table_thunk({1})'.format(func.wrapped_name, func.args_decl))
         self.outln('{')
-        self.outln('    struct dispatch_table *dispatch_table = get_dispatch_table();')
+        if platform.system() is not 'Windows':
+            self.outln('    struct dispatch_table *dispatch_table = get_dispatch_table();')
+        else:
+            self.outln('    const struct dispatch_table *dispatch_table = get_dispatch_table();')
         self.outln('')
         if func.ret_type == 'void':
             self.outln('    {0}({1});'.format(dispatch_table_entry, func.args_list))
@@ -616,18 +650,27 @@ class Generator(object):
 
         dispatch_table_entry = 'dispatch_table->p{0}'.format(func.name)
 
-        self.outln('static GLAPIENTRY {0}'.format(func.ret_type))
+        if platform.system() is not 'Windows':
+            self.outln('static GLAPIENTRY {0}'.format(func.ret_type))
+        else:
+            self.outln('static {0}'.format(func.ret_type))
         self.outln('epoxy_{0}_rewrite_stub({1})'.format(func.name, func.args_decl))
         self.outln('{')
         self.outln('    struct dispatch_table *dispatch_table = get_dispatch_table();')
         self.outln('')
-        self.outln('    dispatch_table->p{0} = epoxy_{0}_resolver();'.format(func.name))
+        if platform.system() is not 'Windows':
+            self.outln('    dispatch_table->p{0} = epoxy_{0}_resolver();'.format(func.name))
+        else:
+            self.outln('    dispatch_table->p{0} = ({1})epoxy_{0}_resolver();'.format(func.name,func.ptr_type))
         self.outln('')
 
-        if func.ret_type == 'void':
+        if func.ret_type == 'void' or func.ret_type == 'VOID':
             self.outln('    dispatch_table->p{0}({1});'.format(func.name, func.args_list))
         else:
-            self.outln('    return dispatch_table->p{0}({1});'.format(func.name, func.args_list))
+            if platform.system() is not 'Windows':
+                self.outln('    return dispatch_table->p{0}({1});'.format(func.name, func.args_list))
+            else:
+                self.outln('    return ({0})dispatch_table->p{1}({2});'.format(func.ret_type, func.name, func.args_list))
         self.outln('}')
         self.outln('')
 
@@ -643,7 +686,7 @@ class Generator(object):
         self.outln('    epoxy_{0} = (void *)epoxy_{1}_resolver();'.format(func.wrapped_name,
                                                                           func.alias_name))
 
-        if func.ret_type == 'void':
+        if func.ret_type == 'void' or func.ret_type == 'VOID':
             self.outln('    epoxy_{0}({1});'.format(func.wrapped_name,
                                                     func.args_list))
         else:
@@ -658,7 +701,7 @@ class Generator(object):
         self.outln('')
 
     def write_win32_function_pointer(self, func):
-        self.outln('{0}{1} epoxy_{2} = epoxy_{2}_dispatch_table_thunk;'.format(func.public,
+        self.outln('{0}{1} epoxy_{2} = ({1}) epoxy_{2}_dispatch_table_thunk;'.format(func.public,
                                                                                func.ptr_type,
                                                                                func.wrapped_name))
         self.outln('')
@@ -750,7 +793,12 @@ class Generator(object):
 
         single_resolver_proto = '{0}_single_resolver(enum {0}_provider provider, uint16_t entrypoint_offset)'.format(self.target)
         self.outln('static void *')
-        self.outln('{0} __attribute__((noinline));'.format(single_resolver_proto))
+        if platform.system() is not 'Windows':
+            self.outln('static void *')
+            self.outln('{0} __attribute__((noinline));'.format(single_resolver_proto))
+        else:
+            self.outln('__declspec(noinline) static void *')
+            self.outln('{0};'.format(single_resolver_proto))
         self.outln('')
         self.outln('static void *')
         self.outln('{0}'.format(single_resolver_proto))
@@ -795,7 +843,10 @@ class Generator(object):
         # per-GL-call code, since it's the most interesting to see
         # when you search for the implementation of a call)
         self.outln('#if USING_DISPATCH_TABLE')
-        self.outln('static inline struct dispatch_table *')
+        if platform.system() is not 'Windows':
+            self.outln('static inline struct dispatch_table *')
+        else:
+            self.outln('static __inline struct dispatch_table *')
         self.outln('get_dispatch_table(void);')
         self.outln('')
         self.outln('#endif')
@@ -819,10 +870,16 @@ class Generator(object):
             self.write_dispatch_table_thunk(func)
 
         self.outln('static struct dispatch_table resolver_table = {')
-        for func in self.sorted_functions:
-            # Aliases don't get their own slot, since they use a shared resolver.
-            if func.alias_name == func.name:
-                self.outln('    .p{0} = epoxy_{0}_rewrite_stub,'.format(func.name))
+        if platform.system() is not 'Windows':
+            for func in self.sorted_functions:
+                # Aliases don't get their own slot, since they use a shared resolver.
+                if func.alias_name == func.name:
+                    self.outln('    .p{0} = epoxy_{0}_rewrite_stub,'.format(func.name))
+        else:
+            for func in self.sorted_functions:
+                # Aliases don't get their own slot, since they use a shared resolver.
+                if func.alias_name == func.name:
+                    self.outln('    ({1}) epoxy_{0}_rewrite_stub,'.format(func.name, func.ptr_type))
         self.outln('};')
         self.outln('')
 
@@ -830,7 +887,10 @@ class Generator(object):
         self.outln('uint32_t {0}_tls_size = sizeof(struct dispatch_table);'.format(self.target))
         self.outln('')
 
-        self.outln('static inline struct dispatch_table *')
+        if platform.system() is not 'Windows':
+            self.outln('static inline struct dispatch_table *')
+        else:
+            self.outln('static __inline struct dispatch_table *')
         self.outln('get_dispatch_table(void)')
         self.outln('{')
         self.outln('	return TlsGetValue({0}_tls_index);'.format(self.target))
@@ -868,6 +928,7 @@ for file in args.files:
     generator = Generator(name)
     generator.parse(file)
     generator.drop_weird_glx_functions()
+    generator.drop_weird_wgl_functions()
     generator.sort_functions()
     generator.resolve_aliases()
     generator.fixup_bootstrap_function('glGetString',
